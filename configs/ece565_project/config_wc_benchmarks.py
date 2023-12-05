@@ -24,7 +24,7 @@ system.clk_domain.voltage_domain = VoltageDomain()
 system.mem_mode = 'timing'
 system.mem_ranges = [AddrRange('8GB')]
 
-system.cpu = X86TimingSimpleCPU()
+system.cpu = X86O3CPU()
 
 
 
@@ -41,11 +41,13 @@ system.l2bus = L2XBar()
 system.cpu.icache.connectBus(system.l2bus)
 system.cpu.dcache.connectBus(system.l2bus)
 
+#system.l2cache = L2Cache(tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
 system.l2cache = L2Cache()
 system.l2cache.connectCPUSideBus(system.l2bus)
 system.l3bus = L2XBar()
 system.l2cache.connectMemSideBus(system.l3bus)
 
+#system.l3cache = L3Cache(tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
 system.l3cache = L3Cache()
 system.l3cache.connectCPUSideBus(system.l3bus)
 system.membus = SystemXBar()
@@ -59,7 +61,7 @@ system.cpu.interrupts[0].int_responder = system.membus.mem_side_ports
 system.system_port = system.membus.cpu_side_ports
 
 system.mem_ctrl = MemCtrl()
-system.mem_ctrl.dram = DDR3_1600_8x8()
+system.mem_ctrl.dram = DDR4_2400_8x8()
 system.mem_ctrl.dram.range = system.mem_ranges[0]
 system.mem_ctrl.port = system.membus.mem_side_ports
 
@@ -85,7 +87,7 @@ system.cpu.workload = process
 system.cpu.createThreads()
 
 # max number of instruction for simulation
-system.cpu.max_insts_any_thread = 1e7
+system.cpu.max_insts_any_thread = 50e7
 
 root = Root(full_system = False, system = system)
 m5.instantiate()
