@@ -13,6 +13,10 @@ parser = argparse.ArgumentParser(
     description='A simple system with 3-level cache.')
 parser.add_argument(
     "--benchmark", default="", nargs="?", type=str, help="Benchmark.")
+parser.add_argument(
+    "--indexing-policy", default="set", type=str, choices=["skew", "set"])
+parser.add_argument(
+    "--max-instructions", default=50e7, type=int)
 options = parser.parse_args()
 
 system = System()
@@ -41,14 +45,24 @@ system.l2bus = L2XBar()
 system.cpu.icache.connectBus(system.l2bus)
 system.cpu.dcache.connectBus(system.l2bus)
 
-#system.l2cache = L2Cache(tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
-system.l2cache = L2Cache()
+if options.indexing_policy == "skew":
+    system.l2cache = L2Cache(
+        tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
+elif options.indexing_policy == "set":
+    system.l2cache = L2Cache()
+else:
+    raise NotImplementedError(f"{options.indexing_policy} is not implemented")
 system.l2cache.connectCPUSideBus(system.l2bus)
 system.l3bus = L2XBar()
 system.l2cache.connectMemSideBus(system.l3bus)
 
-#system.l3cache = L3Cache(tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
-system.l3cache = L3Cache()
+if options.indexing_policy == "skew":
+    system.l3cache = L3Cache(
+        tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
+elif options.indexing_policy == "set":
+    system.l3cache = L3Cache()
+else:
+    raise NotImplementedError(f"{options.indexing_policy} is not implemented")
 system.l3cache.connectCPUSideBus(system.l3bus)
 system.membus = SystemXBar()
 system.l3cache.connectMemSideBus(system.membus)
@@ -87,7 +101,7 @@ system.cpu.workload = process
 system.cpu.createThreads()
 
 # max number of instruction for simulation
-system.cpu.max_insts_any_thread = 50e7
+system.cpu.max_insts_any_thread = options.max_instructions
 
 root = Root(full_system = False, system = system)
 m5.instantiate()
