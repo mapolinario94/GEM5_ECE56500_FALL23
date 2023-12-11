@@ -45,13 +45,7 @@ system.l2bus = L2XBar()
 system.cpu.icache.connectBus(system.l2bus)
 system.cpu.dcache.connectBus(system.l2bus)
 
-if options.indexing_policy == "skew":
-    system.l2cache = L2Cache(
-        tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
-elif options.indexing_policy == "set":
-    system.l2cache = L2Cache()
-else:
-    raise NotImplementedError(f"{options.indexing_policy} is not implemented")
+system.l2cache = L2Cache()
 system.l2cache.connectCPUSideBus(system.l2bus)
 system.l3bus = L2XBar()
 system.l2cache.connectMemSideBus(system.l3bus)
