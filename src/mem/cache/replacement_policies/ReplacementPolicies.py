@@ -149,3 +149,9 @@ class WeightedLRURP(LRURP):
     type = "WeightedLRURP"
     cxx_class = 'gem5::replacement_policy::WeightedLRU'
     cxx_header = "mem/cache/replacement_policies/weighted_lru_rp.hh"
+
+
+class ZLRURP(BaseReplacementPolicy):
+    type = 'ZLRURP'
+    cxx_class = 'gem5::replacement_policy::ZLRU'
+    cxx_header = "mem/cache/replacement_policies/zlru_rp.hh"

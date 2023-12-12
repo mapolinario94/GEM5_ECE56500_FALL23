@@ -43,8 +43,8 @@
  * Declaration of a base set associative tag store.
  */
 
-#ifndef __MEM_CACHE_TAGS_BASE_SET_ASSOC_HH__
-#define __MEM_CACHE_TAGS_BASE_SET_ASSOC_HH__
+#ifndef __MEM_CACHE_TAGS_ZBASE_SET_ASSOC_HH__
+#define __MEM_CACHE_TAGS_ZBASE_SET_ASSOC_HH__
 
 #include <cstdint>
 #include <functional>
@@ -60,7 +60,7 @@
 #include "mem/cache/tags/base.hh"
 #include "mem/cache/tags/indexing_policies/base.hh"
 #include "mem/packet.hh"
-#include "params/BaseSetAssoc.hh"
+#include "params/ZBaseSetAssoc.hh"
 #include "debug/ZLRUTest.hh"
 
 namespace gem5
@@ -73,7 +73,7 @@ namespace gem5
  * The BaseSetAssoc placement policy divides the cache into s sets of w
  * cache lines (ways).
  */
-class BaseSetAssoc : public BaseTags
+class ZBaseSetAssoc : public BaseTags
 {
   protected:
     /** The allocatable associativity of the cache (alloc mask). */
@@ -90,17 +90,17 @@ class BaseSetAssoc : public BaseTags
 
   public:
     /** Convenience typedef. */
-     typedef BaseSetAssocParams Params;
+     typedef ZBaseSetAssocParams Params;
 
     /**
      * Construct and initialize this tag store.
      */
-    BaseSetAssoc(const Params &p);
+    ZBaseSetAssoc(const Params &p);
 
     /**
      * Destructor
      */
-    virtual ~BaseSetAssoc() {};
+    virtual ~ZBaseSetAssoc() {};
 
     /**
      * Initialize blocks as CacheBlk instances.
@@ -199,13 +199,115 @@ class BaseSetAssoc : public BaseTags
     void insertBlock(const PacketPtr pkt, CacheBlk *blk) override
     {
         // Insert block
-        BaseTags::insertBlock(pkt, blk);
+        // BaseTags::insertBlock(pkt, blk);
 
-        // Increment tag counter
-        stats.tagsInUse++;
+        assert(!blk->isValid());
 
-        // Update replacement policy
-        replacementPolicy->reset(blk->replacementData, pkt);
+        // Previous block, if existed, has been removed, and now we have
+        // to insert the new one
+
+        // Deal with what we are bringing in
+        RequestorID requestor_id = pkt->req->requestorId();
+        assert(requestor_id < system->maxRequestors());
+        stats.occupancies[requestor_id]++;
+        
+        // Start inverse tree walk
+        /*******************************************************/
+        CacheBlk* int_blk;
+        DPRINTF(ZLRUTest, "Inside insertBlock() \n");
+        // for (const auto& entry : entries) {
+        Addr victim_addr = indexingPolicy->regenerateAddr(blk->getTag(), blk);
+        Addr parent_addr = pkt->getAddr();
+        DPRINTF(ZLRUTest, "Victim -- Tag %#x -- Set %#x -- Way %#x \n", blk->getTag(), blk->getSet(), blk->getWay());
+        DPRINTF(ZLRUTest, "Victim -- Address %#x \n", victim_addr);
+        DPRINTF(ZLRUTest, "Parent -- Address %#x \n", parent_addr);
+        std::vector<ReplaceableEntry*> entries =
+            indexingPolicy->getPossibleEntriesBlock(victim_addr);
+        std::vector<ReplaceableEntry*> entries2ndlevel =
+            indexingPolicy->getPossibleEntriesBlock(parent_addr);
+
+        for (uint32_t i = 0; i < 8; ++i) {
+            if((entries[i]->getSet() == entries2ndlevel[i]->getSet()) && (entries[i]->getWay() == entries2ndlevel[i]->getWay())){
+                int_blk = static_cast<CacheBlk*>(entries[i]);
+                std::string message = int_blk->print();
+                DPRINTF(ZLRUTest, "Intermediate entry: %s \n", message);
+            }
+        }  
+
+
+
+        if((int_blk->getTag() == blk->getTag()) && (int_blk->getSet() == blk->getSet()) && (int_blk->getWay() == blk->getWay())){
+            // normal replacement pkt -> blk
+            // Insert block with tag, src requestor id and task id
+            std::string message = blk->print();
+            DPRINTF(ZLRUTest, "1st replacement before -- %s\n", message);
+            DPRINTF(ZLRUTest, "Tag to be inserted -- %#x\n", extractTag(pkt->getAddr()));
+            blk->insert(extractTag(pkt->getAddr()), pkt->isSecure(), requestor_id,
+                        pkt->req->taskId());
+            DPRINTF(ZLRUTest, "1st replacement after -- %s\n", message);
+            // Check if cache warm up is done
+            if (!warmedUp && stats.tagsInUse.value() >= warmupBound) {
+                warmedUp = true;
+                stats.warmupTick = curTick();
+            }
+
+            // We only need to write into one tag and one data block.
+            stats.tagAccesses += 1;
+            stats.dataAccesses += 1;
+
+            // Increment tag counter
+            stats.tagsInUse++;
+
+            // Update replacement policy
+            replacementPolicy->reset(blk->replacementData, pkt);
+        }
+        else{
+            // Tree walk replacement pkt -> int_blk -> blk
+            // 1st int_blk -> blk
+            std::string message = blk->print();
+            DPRINTF(ZLRUTest, "1st replacement before -- %s\n", message);
+            blk->insert(int_blk->getTag(), int_blk->isSecure(), requestor_id,
+                        pkt->req->taskId());
+            message = blk->print();
+            DPRINTF(ZLRUTest, "1st replacement after -- %s\n", message);
+
+            // 2nd pkt -> int_blk
+            message = int_blk->print();
+            DPRINTF(ZLRUTest, "2nd replacement before -- %s\n", message);
+            int_blk->insert(extractTag(pkt->getAddr()), pkt->isSecure(), requestor_id,
+                        pkt->req->taskId());
+            message = int_blk->print();
+            DPRINTF(ZLRUTest, "2nd replacement after -- %s\n", message);
+            // Check if cache warm up is done
+            if (!warmedUp && stats.tagsInUse.value() >= warmupBound) {
+                warmedUp = true;
+                stats.warmupTick = curTick();
+            }
+
+            // We only need to write into one tag and one data block.
+            stats.tagAccesses += 2;
+            stats.dataAccesses += 2;
+
+            // Increment tag counter
+            stats.tagsInUse++;
+
+            // Update replacement policy
+            replacementPolicy->reset(int_blk->replacementData, pkt);
+            replacementPolicy->reset(blk->replacementData, pkt);
+        }
+
+        
+
+
+        // }
+        // for (const auto& entry : entries2ndlevel) {
+        // DPRINTF(ZLRUTest, "2nd_level -- Tag %#x -- Set %#x -- Way %#x \n", entry->getTag(), entry->getSet(), entry->getWay());
+        // }
+        /*******************************************************/
+
+
+
+        
     }
 
     void moveBlock(CacheBlk *src_blk, CacheBlk *dest_blk) override;
@@ -258,4 +360,4 @@ class BaseSetAssoc : public BaseTags
 
 } // namespace gem5
 
-#endif //__MEM_CACHE_TAGS_BASE_SET_ASSOC_HH__
+#endif //__MEM_CACHE_TAGS_ZBASE_SET_ASSOC_HH__

@@ -31,13 +31,13 @@
  * Declaration of a skewed associative indexing policy.
  */
 
-#ifndef __MEM_CACHE_INDEXING_POLICIES_SKEWED_ASSOCIATIVE_HH__
-#define __MEM_CACHE_INDEXING_POLICIES_SKEWED_ASSOCIATIVE_HH__
+#ifndef __MEM_CACHE_INDEXING_POLICIES_ZSKEWED_HH__
+#define __MEM_CACHE_INDEXING_POLICIES_ZSKEWED_HH__
 
 #include <vector>
 
 #include "mem/cache/tags/indexing_policies/base.hh"
-#include "params/SkewedAssociative.hh"
+#include "params/ZSkewed.hh"
 
 namespace gem5
 {
@@ -69,7 +69,7 @@ class ReplaceableEntry;
  * If provided with an associativity higher than the number of skewing
  * functions, the skewing functions of the extra ways might be sub-optimal.
  */
-class SkewedAssociative : public BaseIndexingPolicy
+class ZSkewed : public BaseIndexingPolicy
 {
   private:
     /**
@@ -140,17 +140,17 @@ class SkewedAssociative : public BaseIndexingPolicy
 
   public:
     /** Convenience typedef. */
-     typedef SkewedAssociativeParams Params;
+     typedef ZSkewedParams Params;
 
     /**
      * Construct and initialize this policy.
      */
-    SkewedAssociative(const Params &p);
+    ZSkewed(const Params &p);
 
     /**
      * Destructor.
      */
-    ~SkewedAssociative() {};
+    ~ZSkewed() {};
 
     /**
      * Find all possible entries for insertion and replacement of an address.
@@ -164,6 +164,9 @@ class SkewedAssociative : public BaseIndexingPolicy
                                                                    override;
     std::vector<ReplaceableEntry*> getPossibleEntriesBlock(const Addr addr) const
                                                                    override;
+
+    // std::vector<ReplaceableEntry*> getPossibleEntriesTree(const Addr addr) const;
+
     /**
      * Regenerate an entry's address from its tag and assigned set and way.
      * Uses the inverse of the skewing function.
@@ -178,4 +181,4 @@ class SkewedAssociative : public BaseIndexingPolicy
 
 } // namespace gem5
 
-#endif //__MEM_CACHE_INDEXING_POLICIES_SKEWED_ASSOCIATIVE_HH__
+#endif //__MEM_CACHE_INDEXING_POLICIES_ZSKEWED_HH__

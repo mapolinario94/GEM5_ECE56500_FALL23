@@ -68,7 +68,7 @@ class TaggedEntry : public ReplaceableEntry
      *
      * @return The tag value.
      */
-    virtual Addr getTag() const { return _tag; }
+    Addr getTag() const override { return _tag; }
 
     /**
      * Checks if the given tag information corresponds to this entry's.

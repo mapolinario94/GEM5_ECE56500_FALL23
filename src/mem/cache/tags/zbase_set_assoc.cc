@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2018 Inria
- * Copyright (c) 2012-2014,2017 ARM Limited
+ * Copyright (c) 2012-2014 ARM Limited
  * All rights reserved.
  *
  * The license below extends only to copyright in the software and shall
@@ -41,44 +40,73 @@
 
 /**
  * @file
- * Definitions of a set associative indexing policy.
+ * Definitions of a conventional tag store.
  */
 
-#include "mem/cache/tags/indexing_policies/set_associative.hh"
+#include "mem/cache/tags/zbase_set_assoc.hh"
 
-#include "mem/cache/replacement_policies/replaceable_entry.hh"
+#include <string>
+
+#include "base/intmath.hh"
 
 namespace gem5
 {
 
-SetAssociative::SetAssociative(const Params &p)
-    : BaseIndexingPolicy(p)
+ZBaseSetAssoc::ZBaseSetAssoc(const Params &p)
+    :BaseTags(p), allocAssoc(p.assoc), blks(p.size / p.block_size),
+     sequentialAccess(p.sequential_access),
+     replacementPolicy(p.replacement_policy)
 {
+    // There must be a indexing policy
+    fatal_if(!p.indexing_policy, "An indexing policy is required");
+
+    // Check parameters
+    if (blkSize < 4 || !isPowerOf2(blkSize)) {
+        fatal("Block size must be at least 4 and a power of 2");
+    }
 }
 
-uint32_t
-SetAssociative::extractSet(const Addr addr) const
+void
+ZBaseSetAssoc::tagsInit()
 {
-    return (addr >> setShift) & setMask;
+    // Initialize all blocks
+    for (unsigned blk_index = 0; blk_index < numBlocks; blk_index++) {
+        // Locate next cache block
+        CacheBlk* blk = &blks[blk_index];
+
+        // Link block to indexing policy
+        indexingPolicy->setEntry(blk, blk_index);
+
+        // Associate a data chunk to the block
+        blk->data = &dataBlks[blkSize*blk_index];
+
+        // Associate a replacement data entry to the block
+        blk->replacementData = replacementPolicy->instantiateEntry();
+    }
 }
 
-Addr
-SetAssociative::regenerateAddr(const Addr tag, const ReplaceableEntry* entry)
-                                                                        const
+void
+ZBaseSetAssoc::invalidate(CacheBlk *blk)
 {
-    return (tag << tagShift) | (entry->getSet() << setShift);
+    BaseTags::invalidate(blk);
+
+    // Decrease the number of tags in use
+    stats.tagsInUse--;
+
+    // Invalidate replacement data
+    replacementPolicy->invalidate(blk->replacementData);
 }
 
-std::vector<ReplaceableEntry*>
-SetAssociative::getPossibleEntries(const Addr addr) const
+void
+ZBaseSetAssoc::moveBlock(CacheBlk *src_blk, CacheBlk *dest_blk)
 {
-    return sets[extractSet(addr)];
-}
+    BaseTags::moveBlock(src_blk, dest_blk);
 
-std::vector<ReplaceableEntry*>
-SetAssociative::getPossibleEntriesBlock(const Addr addr) const
-{
-    return sets[extractSet(addr)];
+    // Since the blocks were using different replacement data pointers,
+    // we must touch the replacement data of the new entry, and invalidate
+    // the one that is being moved.
+    replacementPolicy->invalidate(src_blk->replacementData);
+    replacementPolicy->reset(dest_blk->replacementData);
 }
 
 } // namespace gem5

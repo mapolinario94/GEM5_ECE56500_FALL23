@@ -128,3 +128,16 @@ class FALRU(BaseTags):
 
     # This tag uses its own embedded indexing
     indexing_policy = NULL
+
+
+class ZBaseSetAssoc(BaseTags):
+    type = 'ZBaseSetAssoc'
+    cxx_header = "mem/cache/tags/zbase_set_assoc.hh"
+    cxx_class = 'gem5::ZBaseSetAssoc'
+
+    # Get the cache associativity
+    assoc = Param.Int(Parent.assoc, "associativity")
+
+    # Get replacement policy from the parent (cache)
+    replacement_policy = Param.BaseReplacementPolicy(
+        Parent.replacement_policy, "Replacement policy")

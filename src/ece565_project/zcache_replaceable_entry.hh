@@ -26,15 +26,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __MEM_CACHE_REPLACEMENT_POLICIES_REPLACEABLE_ENTRY_HH__
-#define __MEM_CACHE_REPLACEMENT_POLICIES_REPLACEABLE_ENTRY_HH__
+#ifndef __ECE565_PROJECT_ZCACHE_REPLACEABLE_ENTRY_HH__
+#define __ECE565_PROJECT_ZCACHE_REPLACEABLE_ENTRY_HH__
 
 #include <cstdint>
 #include <memory>
 
 #include "base/compiler.hh"
 #include "base/cprintf.hh"
-#include "base/types.hh"
 
 namespace gem5
 {
@@ -110,18 +109,6 @@ class ReplaceableEntry
      * @return The way to which this entry belongs.
      */
     uint32_t getWay() const { return _way; }
-
-
-    /**
-     * Get the tag. THIS FUNCTION IS A PLACEHOLDER FOR ZCACHE IMPLEMENTATION
-     *
-     * @return The tag to which this entry belongs.
-     */
-    virtual Addr getTag() const {
-      Addr temp=0;
-      return temp;
-    };
-
 
     /**
      * Prints relevant information about this entry.

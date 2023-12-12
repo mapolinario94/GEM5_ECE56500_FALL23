@@ -31,17 +31,18 @@
  * Definitions of a skewed associative indexing policy.
  */
 
-#include "mem/cache/tags/indexing_policies/skewed_associative.hh"
+#include "mem/cache/tags/indexing_policies/zskewed.hh"
 
 #include "base/bitfield.hh"
 #include "base/intmath.hh"
 #include "base/logging.hh"
 #include "mem/cache/replacement_policies/replaceable_entry.hh"
-
+#include "base/trace.hh"
+#include "debug/ZLRUTest.hh"
 namespace gem5
 {
 
-SkewedAssociative::SkewedAssociative(const Params &p)
+ZSkewed::ZSkewed(const Params &p)
     : BaseIndexingPolicy(p), msbShift(floorLog2(numSets) - 1)
 {
     if (assoc > NUM_SKEWING_FUNCTIONS) {
@@ -60,7 +61,7 @@ SkewedAssociative::SkewedAssociative(const Params &p)
 }
 
 Addr
-SkewedAssociative::hash(const Addr addr) const
+ZSkewed::hash(const Addr addr) const
 {
     // Get relevant bits
     const uint8_t lsb = bits<Addr>(addr, 0);
@@ -72,7 +73,7 @@ SkewedAssociative::hash(const Addr addr) const
 }
 
 Addr
-SkewedAssociative::dehash(const Addr addr) const
+ZSkewed::dehash(const Addr addr) const
 {
     // Get relevant bits. The original MSB is one bit away on the current MSB
     // (which is the XOR bit). The original LSB can be retrieved from inverting
@@ -87,7 +88,7 @@ SkewedAssociative::dehash(const Addr addr) const
 }
 
 Addr
-SkewedAssociative::skew(const Addr addr, const uint32_t way) const
+ZSkewed::skew(const Addr addr, const uint32_t way) const
 {
     // Assume an address of size A bits can be decomposed into
     // {addr3, addr2, addr1, addr0}, where:
@@ -139,7 +140,7 @@ SkewedAssociative::skew(const Addr addr, const uint32_t way) const
 }
 
 Addr
-SkewedAssociative::deskew(const Addr addr, const uint32_t way) const
+ZSkewed::deskew(const Addr addr, const uint32_t way) const
 {
     // Get relevant bits of the addr
     Addr addr1 = bits<Addr>(addr, msbShift, 0);
@@ -192,13 +193,13 @@ SkewedAssociative::deskew(const Addr addr, const uint32_t way) const
 }
 
 uint32_t
-SkewedAssociative::extractSet(const Addr addr, const uint32_t way) const
+ZSkewed::extractSet(const Addr addr, const uint32_t way) const
 {
     return skew(addr >> setShift, way) & setMask;
 }
 
 Addr
-SkewedAssociative::regenerateAddr(const Addr tag,
+ZSkewed::regenerateAddr(const Addr tag,
                                   const ReplaceableEntry* entry) const
 {
     const Addr addr_set = (tag << (msbShift + 1)) | entry->getSet();
@@ -207,21 +208,37 @@ SkewedAssociative::regenerateAddr(const Addr tag,
 }
 
 std::vector<ReplaceableEntry*>
-SkewedAssociative::getPossibleEntries(const Addr addr) const
+ZSkewed::getPossibleEntries(const Addr addr) const
 {
     std::vector<ReplaceableEntry*> entries;
+    std::vector<ReplaceableEntry*> entries2ndlevel;
 
     // Parse all ways
     for (uint32_t way = 0; way < assoc; ++way) {
         // Apply hash to get set, and get way entry in it
         entries.push_back(sets[extractSet(addr, way)][way]);
     }
+    for (const auto& entry : entries) {
+      for (uint32_t way = 0; way < assoc; ++way) {
+        entries2ndlevel.push_back(sets[extractSet(regenerateAddr(entry->getTag(), entry), way)][way]);
+      }
+    }
 
+    DPRINTF(ZLRUTest, "Inside getPossibleEntries() \n");
+    for (const auto& entry : entries) {
+      DPRINTF(ZLRUTest, "1st_level -- Tag %#x -- Set %#x -- Way %#x \n", entry->getTag(), entry->getSet(), entry->getWay());
+    }
+    for (const auto& entry : entries2ndlevel) {
+      DPRINTF(ZLRUTest, "2nd_level -- Tag %#x -- Set %#x -- Way %#x \n", entry->getTag(), entry->getSet(), entry->getWay());
+    }
+
+    // return entries2ndlevel;
     return entries;
 }
+
 
 std::vector<ReplaceableEntry*>
-SkewedAssociative::getPossibleEntriesBlock(const Addr addr) const
+ZSkewed::getPossibleEntriesBlock(const Addr addr) const
 {
     std::vector<ReplaceableEntry*> entries;
 
@@ -231,7 +248,29 @@ SkewedAssociative::getPossibleEntriesBlock(const Addr addr) const
         entries.push_back(sets[extractSet(addr, way)][way]);
     }
 
+    // for (const auto& entry : entries) {
+    //   DPRINTF(ZLRUTest, "TAGs in getPossibleEntries(): %#x\n", entry->getTag());
+    // }
+
     return entries;
 }
+
+// std::vector<ReplaceableEntry*>
+// ZSkewed::getPossibleEntriesTree(const Addr addr) const
+// {
+//     std::vector<ReplaceableEntry*> entries;
+
+//     // Parse all ways
+//     for (uint32_t way = 0; way < assoc; ++way) {
+//         // Apply hash to get set, and get way entry in it
+//         entries.push_back(sets[extractSet(addr, way)][way]);
+//     }
+
+//     for (const auto& entry : entries) {
+//       DPRINTF(ZLRUTest, "TAGs in getPossibleEntries(): %#x\n", entry->getTag());
+//     }
+
+//     return entries;
+// }
 
 } // namespace gem5
