@@ -38,7 +38,7 @@
 #include "base/logging.hh"
 #include "mem/cache/replacement_policies/replaceable_entry.hh"
 #include "base/trace.hh"
-#include "debug/ZLRUTest.hh"
+#include "debug/Zindex.hh"
 namespace gem5
 {
 
@@ -220,20 +220,26 @@ ZSkewed::getPossibleEntries(const Addr addr) const
     }
     for (const auto& entry : entries) {
       for (uint32_t way = 0; way < assoc; ++way) {
-        entries2ndlevel.push_back(sets[extractSet(regenerateAddr(entry->getTag(), entry), way)][way]);
+        uint32_t set = extractSet(regenerateAddr(entry->getTag(), entry), way);
+        // if(entry->getSet() != set){
+        entries2ndlevel.push_back(sets[set][way]);
+        // }
       }
     }
 
-    DPRINTF(ZLRUTest, "Inside getPossibleEntries() \n");
+    DPRINTF(Zindex, "Inside getPossibleEntries() \n");
+    
     for (const auto& entry : entries) {
-      DPRINTF(ZLRUTest, "1st_level -- Tag %#x -- Set %#x -- Way %#x \n", entry->getTag(), entry->getSet(), entry->getWay());
+      std::string message = entry->print();
+      DPRINTF(Zindex, "1st_level -- %s\n", message);
     }
     for (const auto& entry : entries2ndlevel) {
-      DPRINTF(ZLRUTest, "2nd_level -- Tag %#x -- Set %#x -- Way %#x \n", entry->getTag(), entry->getSet(), entry->getWay());
+      std::string message = entry->print();
+      DPRINTF(Zindex, "2nd_level -- %s \n", message);
     }
 
-    // return entries2ndlevel;
-    return entries;
+    return entries2ndlevel;
+    // return entries;
 }
 
 

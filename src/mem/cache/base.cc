@@ -53,7 +53,7 @@
 #include "debug/CacheRepl.hh"
 #include "debug/CacheVerbose.hh"
 #include "debug/HWPrefetch.hh"
-#include "debug/ZLRUTest.hh"
+#include "debug/Zcache.hh"
 #include "mem/cache/compressors/base.hh"
 #include "mem/cache/mshr.hh"
 #include "mem/cache/prefetch/base.hh"
@@ -390,7 +390,11 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
                 assert((pkt->needsWritable() &&
                     !blk->isSet(CacheBlk::WritableBit)) ||
                     pkt->req->isCacheMaintenance());
+                std::string message = blk->print();
+                DPRINTF(Zcache, "Before clearCoherence %s\n", message);
                 blk->clearCoherenceBits(CacheBlk::ReadableBit);
+                message = blk->print();
+                DPRINTF(Zcache, "After clearCoherence %s\n", message);
             }
             // Here we are using forward_time, modelling the latency of
             // a miss (outbound) just as forwardLatency, neglecting the
@@ -551,7 +555,9 @@ BaseCache::recvTimingResp(PacketPtr pkt)
     if (is_fill && !is_error) {
         DPRINTF(Cache, "Block for addr %#llx being updated in Cache\n",
                 pkt->getAddr());
-
+        
+        // DPRINTF(Cache, "Block for addr %#llx being updated in Cache\n",
+        //         regenerateBlkAddr(blk));
         const bool allocate = (writeAllocator && mshr->wasWholeLineWrite) ?
             writeAllocator->allocate() : mshr->allocOnFill();
         blk = handleFill(pkt, blk, writebacks, allocate);
@@ -1537,6 +1543,9 @@ BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
             DPRINTF(Cache, "using temp block for %#llx (%s)\n", addr,
                     is_secure ? "s" : "ns");
         }
+        else{
+            blk = tags->findBlock(pkt->getAddr(), pkt->isSecure());
+        }
     } else {
         // existing block... probably an upgrade
         // don't clear block status... if block is already dirty we
@@ -1596,9 +1605,10 @@ BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
         updateBlockData(blk, pkt, has_old_data);
     }
     // The block will be ready when the payload arrives and the fill is done
+    DPRINTF(Zcache, "Before setWhenReady \n");
     blk->setWhenReady(clockEdge(fillLatency) + pkt->headerDelay +
                       pkt->payloadDelay);
-
+    DPRINTF(Zcache, "After setWhenReady \n");
     return blk;
 }
 
@@ -1640,7 +1650,7 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
 
     // Print victim block's information
     DPRINTF(CacheRepl, "Replacement victim: %s\n", victim->print());
-    DPRINTF(ZLRUTest, "Replacement victim: %s\n", victim->print());
+    DPRINTF(Zcache, "Replacement victim: %s\n", victim->print());
 
     // Try to evict blocks; if it fails, give up on allocation
     if (!handleEvictions(evict_blks, writebacks)) {

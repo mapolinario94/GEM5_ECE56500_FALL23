@@ -86,8 +86,8 @@ ZLRU::getVictim(const ReplacementCandidates& candidates) const
         // std::string message = candidate->print();
         // uint32_t _set = candidate->getSet();
         // uint32_t _way = candidate->getWay();
-        DPRINTF(ZLRUTest, "%s \n", message);
-        DPRINTF(ZLRUTest, "TAG: %#x\n", candidate->getTag());
+        // DPRINTF(ZLRUTest, "%s \n", message);
+        // DPRINTF(ZLRUTest, "TAG: %#x\n", candidate->getTag());
 
         // Update victim entry if necessary
         if (std::static_pointer_cast<ZLRUReplData>(

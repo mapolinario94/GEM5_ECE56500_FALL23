@@ -50,3 +50,6 @@ Source('zlru_rp.cc')
 GTest('replaceable_entry.test', 'replaceable_entry.test.cc')
 
 DebugFlag('ZLRUTest', "Testing LRU for ZCache")
+DebugFlag('Zindex', "Testing index for ZCache")
+DebugFlag('Ztags', "Testing replacement for ZCache")
+DebugFlag('Zcache', "Testing cache level operations for ZCache")

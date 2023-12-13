@@ -38,7 +38,7 @@ class L2Cache(Cache):
 
 class L3Cache(Cache):
     size = '4MB'
-    assoc = 16
+    assoc = 8
     tag_latency = 39
     data_latency = 39
     response_latency = 39

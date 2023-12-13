@@ -131,6 +131,10 @@ class BaseIndexingPolicy : public SimObject
     ReplaceableEntry* getEntry(const uint32_t set, const uint32_t way) const;
 
     /**
+     * Get associativity
+    */
+    unsigned getAssociativity() const { return assoc; }
+    /**
      * Generate the tag from the given address.
      *
      * @param addr The address to get the tag from.

@@ -108,7 +108,7 @@ CompressedTags::findVictim(Addr addr, const bool is_secure,
 {
     // Get all possible locations of this superblock
     const std::vector<ReplaceableEntry*> superblock_entries =
-        indexingPolicy->getPossibleEntries(addr);
+        indexingPolicy->getPossibleEntriesBlock(addr);
 
     // Check if the superblock this address belongs to has been allocated. If
     // so, try co-allocating

@@ -258,7 +258,7 @@ SectorTags::findBlock(Addr addr, bool is_secure) const
 
     // Find all possible sector entries that may contain the given address
     const std::vector<ReplaceableEntry*> entries =
-        indexingPolicy->getPossibleEntries(addr);
+        indexingPolicy->getPossibleEntriesBlock(addr);
 
     // Search for block
     for (const auto& sector : entries) {
@@ -278,7 +278,7 @@ SectorTags::findVictim(Addr addr, const bool is_secure, const std::size_t size,
 {
     // Get possible entries to be victimized
     const std::vector<ReplaceableEntry*> sector_entries =
-        indexingPolicy->getPossibleEntries(addr);
+        indexingPolicy->getPossibleEntriesBlock(addr);
 
     // Check if the sector this address belongs to has been allocated
     Addr tag = extractTag(addr);

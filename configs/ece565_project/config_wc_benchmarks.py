@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "--benchmark", default="", nargs="?", type=str, help="Benchmark.")
 parser.add_argument(
-    "--indexing-policy", default="set", type=str, choices=["skew", "set"])
+    "--indexing-policy", default="set", type=str, choices=["skew", "set", "zcache"])
 parser.add_argument(
     "--max-instructions", default=50e7, type=int)
 options = parser.parse_args()
@@ -55,6 +55,9 @@ if options.indexing_policy == "skew":
         tags=BaseSetAssoc(indexing_policy=SkewedAssociative()))
 elif options.indexing_policy == "set":
     system.l3cache = L3Cache()
+elif options.indexing_policy == "zcache":
+    system.l3cache = L3Cache(
+        tags=ZBaseSetAssoc(indexing_policy=ZSkewed()), replacement_policy=ZLRURP())
 else:
     raise NotImplementedError(f"{options.indexing_policy} is not implemented")
 system.l3cache.connectCPUSideBus(system.l3bus)

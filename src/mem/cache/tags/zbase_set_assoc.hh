@@ -61,7 +61,7 @@
 #include "mem/cache/tags/indexing_policies/base.hh"
 #include "mem/packet.hh"
 #include "params/ZBaseSetAssoc.hh"
-#include "debug/ZLRUTest.hh"
+#include "debug/Ztags.hh"
 
 namespace gem5
 {
@@ -170,7 +170,7 @@ class ZBaseSetAssoc : public BaseTags
                          const std::size_t size,
                          std::vector<CacheBlk*>& evict_blks) override
     {
-        DPRINTF(ZLRUTest, "Before calling getPossibleEntries() \n");
+        DPRINTF(Ztags, "Before calling getPossibleEntries() \n");
         // Get possible entries to be victimized
         const std::vector<ReplaceableEntry*> entries =
             indexingPolicy->getPossibleEntries(addr);
@@ -179,7 +179,7 @@ class ZBaseSetAssoc : public BaseTags
         // const std::vector<ReplaceableEntry*> entries_tree =
         //     indexingPolicy->getPossibleEntriesTree(addr);
 
-        DPRINTF(ZLRUTest, "Before calling getVictim() \n");
+        DPRINTF(Ztags, "Before calling getVictim() \n");
         // Choose replacement victim from replacement candidates
         CacheBlk* victim = static_cast<CacheBlk*>(replacementPolicy->getVictim(
                                 entries));
@@ -213,38 +213,74 @@ class ZBaseSetAssoc : public BaseTags
         
         // Start inverse tree walk
         /*******************************************************/
-        CacheBlk* int_blk;
-        DPRINTF(ZLRUTest, "Inside insertBlock() \n");
+        CacheBlk* int_blk=blk;
+        DPRINTF(Ztags, "Inside insertBlock() \n");
         // for (const auto& entry : entries) {
         Addr victim_addr = indexingPolicy->regenerateAddr(blk->getTag(), blk);
         Addr parent_addr = pkt->getAddr();
-        DPRINTF(ZLRUTest, "Victim -- Tag %#x -- Set %#x -- Way %#x \n", blk->getTag(), blk->getSet(), blk->getWay());
-        DPRINTF(ZLRUTest, "Victim -- Address %#x \n", victim_addr);
-        DPRINTF(ZLRUTest, "Parent -- Address %#x \n", parent_addr);
+        std::string message = blk->print();
+        DPRINTF(Ztags, "Victim -- %s \n", message);
+        DPRINTF(Ztags, "Victim -- Address %#x \n", victim_addr);
+        DPRINTF(Ztags, "Parent -- Address %#x \n", parent_addr);
         std::vector<ReplaceableEntry*> entries =
             indexingPolicy->getPossibleEntriesBlock(victim_addr);
         std::vector<ReplaceableEntry*> entries2ndlevel =
             indexingPolicy->getPossibleEntriesBlock(parent_addr);
 
-        for (uint32_t i = 0; i < 8; ++i) {
-            if((entries[i]->getSet() == entries2ndlevel[i]->getSet()) && (entries[i]->getWay() == entries2ndlevel[i]->getWay())){
-                int_blk = static_cast<CacheBlk*>(entries[i]);
+
+        for (const auto& entry : entries) {
+            std::string message = entry->print();
+            DPRINTF(Ztags, "Candidates for victim %s \n", message);
+        }
+        for (const auto& entry : entries2ndlevel) {
+            std::string message = entry->print();
+            DPRINTF(Ztags, "Candidates for Parent %s \n", message);
+        }
+        // ReplaceableEntry* victim = candidates[0];
+        bool first_level = false;
+        for (const auto& entry : entries2ndlevel) {
+            DPRINTF(Ztags, "Inside loop first level evaluation\n");
+            if((entry->getSet() == blk->getSet()) && (entry->getWay() == blk->getWay())){
+                int_blk = blk;
                 std::string message = int_blk->print();
-                DPRINTF(ZLRUTest, "Intermediate entry: %s \n", message);
+                DPRINTF(Ztags, "Intermediate entry on first level: %s \n", message);
+                first_level = true;
+                break;
             }
-        }  
+        } 
 
+        if(!first_level){
+            // uint32_t i = 0;
+            Addr temp_addr;
+            bool match = false;
+            for (const auto& entry : entries2ndlevel) {
+                temp_addr = indexingPolicy->regenerateAddr(entry->getTag(), entry);
+                std::vector<ReplaceableEntry*> temp_entries = indexingPolicy->getPossibleEntriesBlock(temp_addr);
+                for (const auto& entry_temp : temp_entries) {
+                    DPRINTF(Ztags, "Inside loop second level evaluation\n");
+                    if((entry_temp->getSet() == blk->getSet()) && (entry_temp->getWay() == blk->getWay())){
+                        int_blk = static_cast<CacheBlk*>(entry);
+                        std::string message = int_blk->print();
+                        DPRINTF(Ztags, "Intermediate entry on first level: %s \n", message);
+                        match = true;
+                        break;
+                    }
+                } 
+                if(match){
+                        break;
+                    }
+            } 
+        }
 
-
-        if((int_blk->getTag() == blk->getTag()) && (int_blk->getSet() == blk->getSet()) && (int_blk->getWay() == blk->getWay())){
+        if(first_level){
             // normal replacement pkt -> blk
             // Insert block with tag, src requestor id and task id
             std::string message = blk->print();
-            DPRINTF(ZLRUTest, "1st replacement before -- %s\n", message);
-            DPRINTF(ZLRUTest, "Tag to be inserted -- %#x\n", extractTag(pkt->getAddr()));
+            DPRINTF(Ztags, "1st replacement before -- %s\n", message);
+            DPRINTF(Ztags, "Tag to be inserted -- %#x\n", extractTag(pkt->getAddr()));
             blk->insert(extractTag(pkt->getAddr()), pkt->isSecure(), requestor_id,
                         pkt->req->taskId());
-            DPRINTF(ZLRUTest, "1st replacement after -- %s\n", message);
+            DPRINTF(Ztags, "1st replacement after -- %s\n", message);
             // Check if cache warm up is done
             if (!warmedUp && stats.tagsInUse.value() >= warmupBound) {
                 warmedUp = true;
@@ -265,19 +301,23 @@ class ZBaseSetAssoc : public BaseTags
             // Tree walk replacement pkt -> int_blk -> blk
             // 1st int_blk -> blk
             std::string message = blk->print();
-            DPRINTF(ZLRUTest, "1st replacement before -- %s\n", message);
+            DPRINTF(Ztags, "1st replacement before -- %s\n", message);
             blk->insert(int_blk->getTag(), int_blk->isSecure(), requestor_id,
                         pkt->req->taskId());
+
+            // moveBlock(int_blk, blk);
+            
             message = blk->print();
-            DPRINTF(ZLRUTest, "1st replacement after -- %s\n", message);
+            DPRINTF(Ztags, "1st replacement after -- %s\n", message);
 
             // 2nd pkt -> int_blk
             message = int_blk->print();
-            DPRINTF(ZLRUTest, "2nd replacement before -- %s\n", message);
+            DPRINTF(Ztags, "2nd replacement before -- %s\n", message);
+            int_blk->invalidate();
             int_blk->insert(extractTag(pkt->getAddr()), pkt->isSecure(), requestor_id,
                         pkt->req->taskId());
             message = int_blk->print();
-            DPRINTF(ZLRUTest, "2nd replacement after -- %s\n", message);
+            DPRINTF(Ztags, "2nd replacement after -- %s\n", message);
             // Check if cache warm up is done
             if (!warmedUp && stats.tagsInUse.value() >= warmupBound) {
                 warmedUp = true;
@@ -295,18 +335,6 @@ class ZBaseSetAssoc : public BaseTags
             replacementPolicy->reset(int_blk->replacementData, pkt);
             replacementPolicy->reset(blk->replacementData, pkt);
         }
-
-        
-
-
-        // }
-        // for (const auto& entry : entries2ndlevel) {
-        // DPRINTF(ZLRUTest, "2nd_level -- Tag %#x -- Set %#x -- Way %#x \n", entry->getTag(), entry->getSet(), entry->getWay());
-        // }
-        /*******************************************************/
-
-
-
         
     }
 
