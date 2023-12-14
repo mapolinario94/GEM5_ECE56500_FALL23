@@ -1660,8 +1660,13 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
     // Insert new block at victimized entry
     tags->insertBlock(pkt, victim);
 
-    victim = tags->findBlock(pkt->getAddr(), pkt->isSecure());
-    DPRINTF(Zcache, "Replacement victim 2nd: %s\n", victim->print());
+    // evict_blks.push_back(victim);
+    // if (!handleEvictions(evict_blks, writebacks)) {
+    //     return nullptr;
+    // }
+
+    // victim = tags->findBlock(pkt->getAddr(), pkt->isSecure());
+    // DPRINTF(Zcache, "Replacement victim 2nd: %s\n", victim->print());
 
     // If using a compressor, set compression data. This must be done after
     // insertion, as the compression bit may be set.

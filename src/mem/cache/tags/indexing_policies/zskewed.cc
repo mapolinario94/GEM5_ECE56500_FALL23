@@ -238,8 +238,8 @@ ZSkewed::getPossibleEntries(const Addr addr) const
       DPRINTF(Zindex, "2nd_level -- %s \n", message);
     }
 
-    return entries2ndlevel;
-    // return entries;
+    // return entries2ndlevel;
+    return entries;
 }
 
 
