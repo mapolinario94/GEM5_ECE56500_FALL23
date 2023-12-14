@@ -290,6 +290,8 @@ class CacheBlk : public TaggedEntry
     /** Get the number of references to this block since insertion. */
     unsigned getRefCount() const { return _refCount; }
 
+    unsigned getCoherence() const {return coherence; }
+
     /** Get the number of references to this block since insertion. */
     void increaseRefCount() { _refCount++; }
 

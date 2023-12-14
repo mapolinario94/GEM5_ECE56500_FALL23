@@ -62,6 +62,7 @@
 #include "mem/packet.hh"
 #include "params/ZBaseSetAssoc.hh"
 #include "debug/Ztags.hh"
+#include "sim/cur_tick.hh"
 
 namespace gem5
 {
@@ -302,11 +303,23 @@ class ZBaseSetAssoc : public BaseTags
             // 1st int_blk -> blk
             std::string message = blk->print();
             DPRINTF(Ztags, "1st replacement before -- %s\n", message);
+            // if(int_blk->isValid()){
+            //     blk = *int_blk;
+            // }
+            // else{
             blk->insert(int_blk->getTag(), int_blk->isSecure(), requestor_id,
                         pkt->req->taskId());
-
+            if(int_blk->isValid()){
+                blk->setCoherenceBits(int_blk->getCoherence());
+                blk->setWhenReady(curTick());
+                blk->data = int_blk->data;
+            }
+            // if (int_blk->wasPrefetched()) {
+            //     blk->setPrefetched();
+            // }
+            // blk->setCoherenceBits(int_blk->coherence);
             // moveBlock(int_blk, blk);
-            
+            // blk->invalidate();
             message = blk->print();
             DPRINTF(Ztags, "1st replacement after -- %s\n", message);
 
