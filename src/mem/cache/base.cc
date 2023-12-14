@@ -798,6 +798,32 @@ BaseCache::updateBlockData(CacheBlk *blk, const PacketPtr cpkt,
     }
 }
 
+// void
+// BaseCache::updateBlocktoBlockData(CacheBlk *blk_src, CacheBlk *blk_dst, const PacketPtr cpkt,)
+// {
+//     DataUpdate data_update(regenerateBlkAddr(blk), blk->isSecure());
+//     if (ppDataUpdate->hasListeners()) {
+//         if (has_old_data) {
+//             data_update.oldData = std::vector<uint64_t>(blk->data,
+//                 blk->data + (blkSize / sizeof(uint64_t)));
+//         }
+//     }
+
+//     // Actually perform the data update
+//     if (cpkt) {
+//         cpkt->writeDataToBlock(blk->data, blkSize);
+//     }
+
+//     if (ppDataUpdate->hasListeners()) {
+//         if (cpkt) {
+//             data_update.newData = std::vector<uint64_t>(blk->data,
+//                 blk->data + (blkSize / sizeof(uint64_t)));
+//         }
+//         ppDataUpdate->notify(data_update);
+//     }
+// }
+
+
 void
 BaseCache::cmpAndSwap(CacheBlk *blk, PacketPtr pkt)
 {

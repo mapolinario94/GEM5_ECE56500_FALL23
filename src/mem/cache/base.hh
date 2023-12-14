@@ -623,6 +623,8 @@ class BaseCache : public ClockedObject
     void updateBlockData(CacheBlk *blk, const PacketPtr cpkt,
         bool has_old_data);
 
+    // void updateBlocktoBlockData(CacheBlk *blk_src, CacheBlk *blk_dst, const PacketPtr cpkt);
+
     /**
      * Handle doing the Compare and Swap function for SPARC.
      */
