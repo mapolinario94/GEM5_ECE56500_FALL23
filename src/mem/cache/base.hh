@@ -1353,6 +1353,7 @@ class BaseCache : public ClockedObject
      */
     bool sendWriteQueuePacket(WriteQueueEntry* wq_entry);
 
+    bool zcache_bool;
     /**
      * Serialize the state of the caches
      *

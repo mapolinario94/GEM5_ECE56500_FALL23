@@ -46,7 +46,7 @@ system.cpu.icache.connectBus(system.l2bus)
 system.cpu.dcache.connectBus(system.l2bus)
 
 
-system.l2cache = L2Cache(tags=ZBaseSetAssoc(indexing_policy=ZSkewed()), replacement_policy=ZLRURP())
+system.l2cache = L2Cache(tags=ZBaseSetAssoc(indexing_policy=ZSkewed()), replacement_policy=ZLRURP(), zcache_bool=True)
 system.l2cache.connectCPUSideBus(system.l2bus)
 system.membus = SystemXBar()
 system.l2cache.connectMemSideBus(system.membus)

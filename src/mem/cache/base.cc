@@ -799,13 +799,13 @@ BaseCache::updateBlockData(CacheBlk *blk, const PacketPtr cpkt,
 }
 
 // void
-// BaseCache::updateBlocktoBlockData(CacheBlk *blk_src, CacheBlk *blk_dst, const PacketPtr cpkt,)
+// BaseCache::updateBlocktoBlockData(CacheBlk *blk_src, CacheBlk *blk_dst, const PacketPtr cpkt)
 // {
-//     DataUpdate data_update(regenerateBlkAddr(blk), blk->isSecure());
+//     DataUpdate data_update(regenerateBlkAddr(blk_scr), blk->isSecure());
 //     if (ppDataUpdate->hasListeners()) {
 //         if (has_old_data) {
-//             data_update.oldData = std::vector<uint64_t>(blk->data,
-//                 blk->data + (blkSize / sizeof(uint64_t)));
+//             data_update.oldData = std::vector<uint64_t>(blk_src->data,
+//                 blk_src->data + (blkSize / sizeof(uint64_t)));
 //         }
 //     }
 
@@ -1682,7 +1682,7 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
     if (!handleEvictions(evict_blks, writebacks)) {
         return nullptr;
     }
-
+    
     // Insert new block at victimized entry
     tags->insertBlock(pkt, victim);
 
@@ -1691,17 +1691,20 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
     //     return nullptr;
     // }
 
-    // victim = tags->findBlock(pkt->getAddr(), pkt->isSecure());
+    CacheBlk *int_victim = tags->findBlock(pkt->getAddr(), pkt->isSecure());
+    if(zcache_bool){
+        updateBlockData(victim, pkt, false);
+    }
     // DPRINTF(Zcache, "Replacement victim 2nd: %s\n", victim->print());
 
     // If using a compressor, set compression data. This must be done after
     // insertion, as the compression bit may be set.
     if (compressor) {
-        compressor->setSizeBits(victim, blk_size_bits);
-        compressor->setDecompressionLatency(victim, decompression_lat);
+        compressor->setSizeBits(int_victim, blk_size_bits);
+        compressor->setDecompressionLatency(int_victim, decompression_lat);
     }
 
-    return victim;
+    return int_victim;
 }
 
 void
